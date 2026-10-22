@@ -3,6 +3,11 @@ import AppKit
 import ImageCaptureCore
 import CryptoKit
 
+guard CommandLine.arguments.count == 2 else {
+    print("Usage: PhotoHelper <destination-directory>")
+    exit(2)
+}
+
 class Detector: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
     var camera: ICCameraDevice?
     var retryCount = 0
@@ -101,7 +106,7 @@ class Detector: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
             }
 
             let folder = URL(
-                fileURLWithPath: "/Volumes/DATA/iPhoneBackupCLI_Test/MediaImport_Test",
+                fileURLWithPath: CommandLine.arguments[1],
                 isDirectory: true
             )
 
