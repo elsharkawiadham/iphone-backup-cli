@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Swift compiled executable
+native/PhotoHelper.app/Contents/MacOS/PhotoHelper
+*.dSYM/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config.local.*
+*.key
+*.pem
+
+# Personal data and temporary files
+/backups/
+/archives/
+/data/
+/tmp/
+/logs/
+*.log
+
+# Development tools
+.vscode/
+.idea/

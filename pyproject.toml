@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iphone-backup-cli"
+version = "0.1.0"
+description = "A safe, open-source iPhone and iPad backup CLI for macOS"
+requires-python = ">=3.11,<3.15"
+
+[project.scripts]
+iphone-backup = "iphone_backup_cli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>dev.iphonebackup.photohelper</string>
+
+    <key>CFBundleName</key>
+    <string>PhotoHelper</string>
+
+    <key>CFBundleExecutable</key>
+    <string>PhotoHelper</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleVersion</key>
+    <string>0.1.0</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Access connected iPhone and iPad media for backup and archiving.</string>
+</dict>
+</plist>
