@@ -32,6 +32,19 @@ class TestSetup(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
+        volume = {
+            "mount_point": "/Volumes/TestSSD",
+            "volume_uuid": "test-uuid",
+        }
+
+        for name, value in [
+            ("identify_volume", volume),
+            ("verify_storage", True),
+        ]:
+            patcher = patch.object(setup, name, return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_backup_only(self):
         with patch(
             "builtins.input",
@@ -121,6 +134,76 @@ class TestSetup(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "Finder backup"):
             setup.validate_destination(str(destination))
+
+
+    def test_backup_volume_identity_saved(self):
+        with patch(
+            "builtins.input",
+            side_effect=[str(self.backups), "n"],
+        ):
+            result = setup.run_setup()
+
+        self.assertEqual(result, 0)
+
+        saved = config.load_config()
+        self.assertEqual(
+            saved["backup_volume"],
+            {
+                "mount_point": "/Volumes/TestSSD",
+                "volume_uuid": "test-uuid",
+            },
+        )
+
+    def test_photo_volume_identity_saved(self):
+        with patch(
+            "builtins.input",
+            side_effect=[str(self.backups), "y", str(self.photos)],
+        ):
+            result = setup.run_setup()
+
+        self.assertEqual(result, 0)
+
+        saved = config.load_config()
+        self.assertEqual(
+            saved["photo_volume"],
+            {
+                "mount_point": "/Volumes/TestSSD",
+                "volume_uuid": "test-uuid",
+            },
+        )
+
+    def test_backup_storage_verification_failure(self):
+        with patch.object(
+            setup,
+            "verify_storage",
+            side_effect=setup.StorageUnavailableError("Wrong volume"),
+        ):
+            with patch(
+                "builtins.input",
+                side_effect=[str(self.backups), "n"],
+            ):
+                result = setup.run_setup()
+
+        self.assertEqual(result, 1)
+        self.assertIsNone(config.load_config())
+
+    def test_photo_storage_verification_failure(self):
+        with patch.object(
+            setup,
+            "verify_storage",
+            side_effect=[
+                True,
+                setup.StorageUnavailableError("Wrong photo volume"),
+            ],
+        ):
+            with patch(
+                "builtins.input",
+                side_effect=[str(self.backups), "y", str(self.photos)],
+            ):
+                result = setup.run_setup()
+
+        self.assertEqual(result, 1)
+        self.assertIsNone(config.load_config())
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from .config import CONFIG_FILE, save_config
+from .storage import StorageUnavailableError, identify_volume, verify_storage
 
 
 def validate_destination(value):
@@ -54,6 +55,12 @@ def run_setup():
             input("Backup destination: ")
         )
 
+        backup_volume = identify_volume(backup, require_external=True)
+        verify_storage(backup, **{
+            "mount_point": backup_volume["mount_point"],
+            "expected_uuid": backup_volume["volume_uuid"],
+        })
+
         answer = input(
             "Enable photo/video archiving? [y/N]: "
         ).strip().lower()
@@ -63,6 +70,7 @@ def run_setup():
 
         photo_enabled = answer in ("y", "yes")
         photo_destination = None
+        photo_volume = None
 
         if photo_enabled:
             photo_destination = validate_destination(
@@ -74,15 +82,25 @@ def run_setup():
                     "Backup and photo destinations must differ."
                 )
 
+        if photo_enabled:
+            photo_volume = identify_volume(photo_destination, require_external=True)
+            verify_storage(
+                photo_destination,
+                photo_volume["mount_point"],
+                photo_volume["volume_uuid"],
+            )
+
         settings = {
             "backup_destination": backup,
+            "backup_volume": backup_volume,
             "photo_archive_enabled": photo_enabled,
             "photo_destination": photo_destination,
+            "photo_volume": photo_volume,
         }
 
         save_config(settings)
 
-    except (ValueError, OSError, EOFError) as error:
+    except (ValueError, OSError, EOFError, StorageUnavailableError) as error:
         print(f"Setup failed: {error}")
         return 1
     except KeyboardInterrupt:

@@ -8,6 +8,7 @@ from unittest.mock import patch
 from iphone_backup_cli.storage import (
     StorageUnavailableError,
     verify_storage,
+    identify_volume,
 )
 
 
@@ -27,7 +28,7 @@ class TestStorage(unittest.TestCase):
             args=["diskutil"],
             returncode=0,
             stdout=plistlib.dumps({
-                "VolumeUUID": uuid,
+                **({"VolumeUUID": uuid} if uuid is not None else {}),
                 "MountPoint": str(self.mount),
             }),
             stderr=b"",
@@ -86,5 +87,103 @@ class TestStorage(unittest.TestCase):
             self.check(self.mount / "missing")
 
 
+    @patch("iphone_backup_cli.storage.subprocess.run")
+    @patch("iphone_backup_cli.storage.os.path.ismount")
+    def test_identify_valid_volume(self, mock_mount, mock_run):
+        mock_mount.side_effect = lambda p: Path(p) == self.mount
+        mock_run.return_value = self.mock_diskutil()
+
+        result = identify_volume(self.destination)
+
+        self.assertEqual(result["mount_point"], str(self.mount))
+        self.assertEqual(result["volume_uuid"], "test-uuid")
+
+    def test_identify_missing_directory(self):
+        with self.assertRaises(StorageUnavailableError):
+            identify_volume(self.root / "missing")
+
+    @patch("iphone_backup_cli.storage.subprocess.run")
+    @patch("iphone_backup_cli.storage.os.path.ismount")
+    def test_identify_missing_uuid(self, mock_mount, mock_run):
+        mock_mount.side_effect = lambda p: Path(p) == self.mount
+        mock_run.return_value = self.mock_diskutil(uuid=None)
+
+        with self.assertRaises(StorageUnavailableError):
+            identify_volume(self.destination)
+
+    @patch("iphone_backup_cli.storage.subprocess.run")
+    @patch("iphone_backup_cli.storage.os.path.ismount")
+    def test_identify_wrong_mount_point(self, mock_mount, mock_run):
+        mock_mount.side_effect = lambda p: Path(p) == self.mount
+
+        mock_run.return_value = CompletedProcess(
+            args=["diskutil"],
+            returncode=0,
+            stdout=plistlib.dumps({
+                "VolumeUUID": "test-uuid",
+                "MountPoint": str(self.root),
+            }),
+            stderr=b"",
+        )
+
+        with self.assertRaises(StorageUnavailableError):
+            identify_volume(self.destination)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestExternalVolumeRequirement(unittest.TestCase):
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name).resolve()
+        self.mount = self.root / "volume"
+        self.destination = self.mount / "backups"
+        self.destination.mkdir(parents=True)
+
+    def identify_with_internal_value(self, internal):
+        info = {
+            "VolumeUUID": "test-uuid",
+            "MountPoint": str(self.mount),
+        }
+
+        if internal is not None:
+            info["Internal"] = internal
+
+        result = CompletedProcess(
+            args=["diskutil"],
+            returncode=0,
+            stdout=plistlib.dumps(info),
+            stderr=b"",
+        )
+
+        with patch(
+            "iphone_backup_cli.storage.os.path.ismount",
+            side_effect=lambda path: Path(path) == self.mount,
+        ), patch(
+            "iphone_backup_cli.storage.subprocess.run",
+            return_value=result,
+        ):
+            return identify_volume(
+                self.destination,
+                require_external=True,
+            )
+
+    def test_external_volume_accepted(self):
+        result = self.identify_with_internal_value(False)
+        self.assertEqual(result["volume_uuid"], "test-uuid")
+
+    def test_internal_volume_rejected(self):
+        with self.assertRaisesRegex(
+            StorageUnavailableError, "confirmed external"
+        ):
+            self.identify_with_internal_value(True)
+
+    def test_unknown_volume_type_rejected(self):
+        with self.assertRaisesRegex(
+            StorageUnavailableError, "confirmed external"
+        ):
+            self.identify_with_internal_value(None)
