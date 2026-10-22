@@ -1,5 +1,6 @@
 import argparse
 from .doctor import run_doctor
+from .setup import run_setup
 
 
 def main():
@@ -21,10 +22,15 @@ def main():
         help="Check system dependencies",
     )
 
+    subparsers.add_parser("setup", help="Configure backup destinations")
+
     args = parser.parse_args()
 
     if args.command == "doctor":
         return run_doctor()
+
+    if args.command == "setup":
+        return run_setup()
 
     parser.print_help()
     return 0
