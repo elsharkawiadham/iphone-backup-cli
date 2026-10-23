@@ -36,3 +36,6 @@ config.local.*
 # Development tools
 .vscode/
 .idea/
+
+# Disposable development fixtures on the external SSD
+.test-tmp/

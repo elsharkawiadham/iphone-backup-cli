@@ -54,13 +54,6 @@ class TestBackupExecutionIdentity(unittest.TestCase):
         storage_patcher.start()
         self.addCleanup(storage_patcher.stop)
 
-        identity_patcher = patch(
-            "iphone_backup_cli.backup_execution.capture_destination_identity",
-            return_value="captured-identity",
-        )
-        self.capture = identity_patcher.start()
-        self.addCleanup(identity_patcher.stop)
-
         check_patcher = patch(
             "iphone_backup_cli.backup_execution.check_destination_identity"
         )
@@ -79,15 +72,11 @@ class TestBackupExecutionIdentity(unittest.TestCase):
         ):
             self.assertEqual(simulate_backup_execution(*self.args), 0)
 
-        self.capture.assert_called_once_with(
-            str(self.root),
-            "/Volumes/TestSSD",
-        )
         self.check_identity.assert_has_calls([
-            call("captured-identity"),
-            call("captured-identity"),
+            call(self.preflight_capture.return_value),
+            call(self.preflight_capture.return_value),
         ])
-        self.assertEqual(self.check_identity.call_count, 2)
+        self.assertEqual(self.check_identity.call_count, 3)
 
     def test_identity_change_blocks_simulation(self):
         self.check_identity.side_effect = StorageUnavailableError(

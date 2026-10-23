@@ -20,6 +20,9 @@ class TestBackupExecution(unittest.TestCase):
 
         self.root = Path(temp.name).resolve()
         self.device = "a" * 40
+        storage = patch("iphone_backup_cli.backup_execution.verify_storage")
+        storage.start()
+        self.addCleanup(storage.stop)
         root_stat = self.root.stat()
         identity_patcher = patch(
             "iphone_backup_cli.execution_preflight.capture_destination_identity"
@@ -44,7 +47,6 @@ class TestBackupExecution(unittest.TestCase):
         )
 
         for name in (
-            "capture_destination_identity",
             "check_destination_identity",
         ):
             patcher = patch(

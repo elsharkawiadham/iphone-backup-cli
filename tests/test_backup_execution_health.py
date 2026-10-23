@@ -42,7 +42,6 @@ class TestBackupExecutionHealth(unittest.TestCase):
         )
 
         for name in (
-            "capture_destination_identity",
             "check_destination_identity",
         ):
             patcher = patch(
@@ -75,7 +74,7 @@ class TestBackupExecutionHealth(unittest.TestCase):
             health_check()
             health_check()
 
-            self.assertEqual(self.monitor_storage.call_count, 2)
+            self.assertEqual(self.monitor_storage.call_count, 3)
 
             with self.assertRaises(Exception):
                 with acquire_backup_lock(self.root):
