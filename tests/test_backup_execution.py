@@ -20,12 +20,38 @@ class TestBackupExecution(unittest.TestCase):
 
         self.root = Path(temp.name).resolve()
         self.device = "a" * 40
+        root_stat = self.root.stat()
+        identity_patcher = patch(
+            "iphone_backup_cli.execution_preflight.capture_destination_identity"
+        )
+        self.preflight_capture = identity_patcher.start()
+        self.preflight_capture.return_value.destination_signature = (
+            root_stat.st_dev, root_stat.st_ino
+        )
+        self.addCleanup(identity_patcher.stop)
+
+        identity_check_patcher = patch(
+            "iphone_backup_cli.execution_preflight.check_destination_identity"
+        )
+        self.preflight_check = identity_check_patcher.start()
+        self.addCleanup(identity_check_patcher.stop)
+
         self.args = (
             str(self.root),
             "/Volumes/TestSSD",
             "test-uuid",
             self.device,
         )
+
+        for name in (
+            "capture_destination_identity",
+            "check_destination_identity",
+        ):
+            patcher = patch(
+                f"iphone_backup_cli.backup_execution.{name}"
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
         for function in (
             "verify_storage",

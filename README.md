@@ -50,6 +50,10 @@ The native photo helper is experimental and should only be used in a controlled 
 
 The project is designed to keep its backups separate from Finder backups and never automatically delete photos from connected devices.
 
+The backup CLI requires `--dry-run`; real iPhone backup execution remains disabled. The development execution simulation launches only a Python no-op and does not transfer device data.
+
+The guarded development simulation verifies the volume UUID and directory identity, rejects redirected paths, and opens the operation lock relative to a verified directory descriptor. Health checks run before process launch and during monitoring. These checks do not establish safe behavior for a future real backup engine after a physical SSD disconnect; that still requires controlled validation before enabling real backups.
+
 Full restore compatibility and complete backup integrity verification have not yet been established.
 
 ## License

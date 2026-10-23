@@ -57,6 +57,9 @@ def run_monitored_command(
     ):
         raise ValueError("Invalid health check interval.")
 
+    if health_check is not None:
+        health_check()
+
     try:
         process = subprocess.Popen(
             command,
