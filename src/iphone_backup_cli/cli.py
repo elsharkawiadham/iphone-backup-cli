@@ -42,6 +42,10 @@ def main():
     simulation_parser = subparsers.add_parser(
         "simulate", help="Run a disposable mock writer; no device communication",
     )
+    simulation_parser.add_argument(
+        "--sandbox", action="store_true",
+        help="Run mock writer inside the macOS filesystem sandbox",
+    )
     simulation_parser.add_argument("--destination", required=True,
                                    help="Existing dedicated directory on an external volume")
     simulation_parser.add_argument("--scenario", choices=("success", "failure", "timeout"),
@@ -72,6 +76,7 @@ def main():
                 result = run_controlled_simulation(
                     args.destination, volume["mount_point"], volume["volume_uuid"],
                     scenario=args.scenario,
+                    **({'sandboxed': True} if args.sandbox else {}),
                 )
             else:
                 result = read_simulation_status(args.operation)

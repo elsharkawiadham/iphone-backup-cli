@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .backup_lock import BackupLockError, acquire_backup_lock
 from .backup_process import BackupProcessError, run_monitored_command
+from .backup_sandbox import prepare_sandboxed_command
 from .storage import StorageUnavailableError, verify_storage
 from .storage_identity import capture_destination_identity, check_destination_identity
 
@@ -154,8 +155,10 @@ class _Operation:
             os.close(fd)
 
 
-def run_controlled_simulation(destination, mount_point, volume_uuid, *, scenario='success'):
+def run_controlled_simulation(destination, mount_point, volume_uuid, *, scenario='success', sandboxed=False):
     """Run a fixed mock writer in a new directory. Never overwrite/resume/promote."""
+    if type(sandboxed) is not bool:
+        raise ValueError('Sandbox option must be a boolean.')
     if scenario not in {'success', 'failure', 'timeout'}:
         raise ValueError('Unknown simulation scenario.')
     operation = None
@@ -184,8 +187,16 @@ def run_controlled_simulation(destination, mount_point, volume_uuid, *, scenario
                 operation.record('created')
                 operation.record('running')
                 try:
+                    worker_command = [
+                        sys.executable, '-I', '-c', _WORKER,
+                        str(operation.fd), scenario,
+                    ]
+                    if sandboxed:
+                        worker_command, _ = prepare_sandboxed_command(
+                            worker_command, operation.path
+                        )
                     run_monitored_command(
-                        [sys.executable, '-I', '-c', _WORKER, str(operation.fd), scenario],
+                        worker_command,
                         pass_fds=(operation.fd,), timeout=0.25 if scenario == 'timeout' else 10,
                         check_interval=0.05, health_check=check,
                     )
