@@ -12,6 +12,7 @@ import subprocess
 import threading
 import time
 from contextlib import contextmanager
+from pathlib import Path
 
 
 class BackupProcessError(Exception):
@@ -183,6 +184,7 @@ def run_monitored_command(
     check_interval=1.0,
     *,
     pass_fds=(),
+    cwd=None,
     stop_timeout=1.0,
     kill_timeout=1.0,
 ):
@@ -211,6 +213,18 @@ def run_monitored_command(
     if pass_fds and os.name != "posix":
         raise ValueError("Inherited process descriptors require POSIX.")
 
+    working_directory = None
+    if cwd is not None:
+        working_directory = Path(cwd).expanduser()
+        if not working_directory.is_absolute() or working_directory.is_symlink():
+            raise ValueError('Invalid process working directory.')
+        try:
+            resolved = working_directory.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise ValueError('Process working directory unavailable.') from error
+        if resolved != working_directory or not resolved.is_dir():
+            raise ValueError('Unsafe process working directory.')
+
     process = None
     group = None
     with _interruption_requests() as requested:
@@ -225,6 +239,8 @@ def run_monitored_command(
                     stdin=subprocess.DEVNULL,
                     start_new_session=(os.name == "posix"),
                     pass_fds=tuple(pass_fds),
+                    **({'cwd': str(working_directory)}
+                       if working_directory is not None else {}),
                 )
             except OSError as error:
                 _raise_interruption(requested)

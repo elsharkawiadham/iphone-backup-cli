@@ -19,6 +19,7 @@ class PreparedRealOperation:
     path: Path
     plan: object
     state: str = "planned_only"
+    lock: object = None
 
 
 def _write_planning_record(directory_fd):
@@ -133,7 +134,7 @@ def create_guarded_real_operation(
             check_destination_identity(plan.operation_identity)
             check_root()
 
-            yield PreparedRealOperation(operation, plan)
+            yield PreparedRealOperation(operation, plan, lock=lock)
 
         finally:
             os.close(directory_fd)
