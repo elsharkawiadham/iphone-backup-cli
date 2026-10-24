@@ -36,6 +36,42 @@ class TestBackupCommand(unittest.TestCase):
             str(self.destination),
         ])
 
+    def test_noninteractive_backup_command(self):
+        command = build_backup_command(
+            self.device,
+            self.destination,
+            interactive=False,
+        )
+        self.assertEqual(command, [
+            "idevicebackup2",
+            "-u",
+            self.device,
+            "backup",
+            str(self.destination),
+        ])
+
+    def test_noninteractive_full_backup_command(self):
+        command = build_backup_command(
+            self.device,
+            self.destination,
+            full=True,
+            interactive=False,
+        )
+        self.assertEqual(command[-3:], [
+            "backup",
+            "--full",
+            str(self.destination),
+        ])
+        self.assertNotIn("-i", command)
+
+    def test_invalid_interactive_setting_rejected(self):
+        with self.assertRaises(ValueError):
+            build_backup_command(
+                self.device,
+                self.destination,
+                interactive="false",
+            )
+
     def test_missing_destination_rejected(self):
         with self.assertRaises(FileNotFoundError):
             build_backup_command(

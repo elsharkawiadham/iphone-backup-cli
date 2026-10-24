@@ -74,7 +74,7 @@ def prepare_real_backup_plan(
         )
 
     original_command = build_backup_command(
-        device_id, str(operation)
+        device_id, str(operation), interactive=False
     )
 
     original_command[0] = str(IDEVICEBACKUP2)

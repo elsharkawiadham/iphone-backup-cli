@@ -66,12 +66,11 @@ class TestRealBackupPlan(unittest.TestCase):
         self.assertEqual(plan.target, self.operation / self.device)
         self.assertIn("sandbox-exec", plan.command[0])
         self.assertEqual(
-            plan.command[-6:-1],
+            plan.command[-5:-1],
             (
                 sys.executable,
                 "-u",
                 self.device,
-                "-i",
                 "backup",
             ),
         )
