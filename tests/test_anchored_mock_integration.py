@@ -273,5 +273,113 @@ class TestAnchoredMockIntegration(unittest.TestCase):
         self.assertFalse((operations[0] / "mock-result.json").exists())
 
 
+    def run_with_real_signal(self, signum, *, uncertain_cleanup=False):
+        """Signal this test process only after supervision is active."""
+
+        original_popen = subprocess.Popen
+        spawned = []
+
+        def launch(*args, **kwargs):
+            handler = signal.getsignal(signum)
+
+            if not callable(handler):
+                raise RuntimeError(
+                    "Refusing to signal without a supervised handler."
+                )
+
+            child = original_popen(*args, **kwargs)
+            spawned.append(child)
+
+            # The supervised handler records this actual OS signal.
+            # It does not send the signal to the shell or other apps.
+            signal.raise_signal(signum)
+            return child
+
+        with patch(
+            "iphone_backup_cli.backup_process.subprocess.Popen",
+            side_effect=launch,
+        ):
+            if uncertain_cleanup:
+                with patch(
+                    "iphone_backup_cli.backup_process._stop_process",
+                    return_value=False,
+                ):
+                    result = self.run_case("timeout")
+            else:
+                result = self.run_case("timeout")
+
+        self.assertEqual(len(spawned), 1)
+        self.assertIsNotNone(
+            spawned[0].poll(),
+            "The native worker was not reaped.",
+        )
+
+        return result
+
+    def test_real_sigterm_stops_native_worker(self):
+        result = self.run_with_real_signal(signal.SIGTERM)
+
+        self.assertEqual(result.status, "mock_interrupted")
+        self.assertEqual(result.exit_code, 143)
+
+        journal = json.loads(
+            (result.operation / "mock-result.json").read_text()
+        )
+
+        self.assertEqual(journal["status"], "mock_interrupted")
+        self.assertFalse(journal["backup_verified"])
+        self.assertFalse(journal["transfer_started"])
+
+        self.assertFalse(
+            (self.root / QUARANTINE_NAME).exists()
+        )
+
+        # Confirm the operation lock was released after cleanup.
+        subsequent = self.run_case("success")
+        self.assertEqual(subsequent.exit_code, 0)
+
+    def test_real_sigint_stops_native_worker(self):
+        result = self.run_with_real_signal(signal.SIGINT)
+
+        self.assertEqual(result.status, "mock_interrupted")
+        self.assertEqual(result.exit_code, 130)
+
+        journal = json.loads(
+            (result.operation / "mock-result.json").read_text()
+        )
+
+        self.assertEqual(journal["status"], "mock_interrupted")
+        self.assertFalse(journal["backup_verified"])
+        self.assertFalse(journal["transfer_started"])
+
+    def test_actual_worker_with_uncertain_cleanup_is_quarantined(self):
+        result = self.run_with_real_signal(
+            signal.SIGTERM,
+            uncertain_cleanup=True,
+        )
+
+        self.assertEqual(
+            result.status,
+            "mock_cleanup_unconfirmed",
+        )
+        self.assertEqual(result.exit_code, 9)
+
+        marker = self.root / QUARANTINE_NAME
+        self.assertTrue(marker.is_file())
+
+        journal = json.loads(
+            (result.operation / "mock-result.json").read_text()
+        )
+
+        self.assertEqual(
+            journal["status"],
+            "mock_cleanup_unconfirmed",
+        )
+        self.assertFalse(journal["backup_verified"])
+
+        with self.assertRaises(BackupLockError):
+            self.run_case("success")
+
+
 if __name__ == "__main__":
     unittest.main()
