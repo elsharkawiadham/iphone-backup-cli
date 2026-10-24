@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import stat
 import subprocess
 import sys
@@ -8,7 +9,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from iphone_backup_cli.backup_process import run_monitored_command
+from iphone_backup_cli.backup_lock import BackupLockError, QUARANTINE_NAME
+from iphone_backup_cli.backup_process import (
+    BackupProcessError,
+    BackupProcessInterruptedError,
+    run_monitored_command,
+)
 from iphone_backup_cli.guarded_mock_execution import (
     run_guarded_mock_execution,
 )
@@ -144,6 +150,119 @@ class TestAnchoredMockIntegration(unittest.TestCase):
                 *self.args,
                 native_launcher=self.mount / "missing-launcher",
             )
+
+        operations = list(
+            self.root.glob(".iphone-backup-operation-*")
+        )
+
+        self.assertEqual(len(operations), 1)
+        self.assertTrue((operations[0] / "planning.json").exists())
+        self.assertFalse((operations[0] / "mock-result.json").exists())
+
+
+    def test_keyboard_interrupt_never_reports_success(self):
+        with patch(
+            "iphone_backup_cli.guarded_mock_execution.run_monitored_command",
+            side_effect=KeyboardInterrupt(),
+        ):
+            result = self.run_case("success")
+
+        self.assertEqual(result.status, "mock_interrupted")
+        self.assertEqual(result.exit_code, 130)
+
+        record = json.loads(
+            (result.operation / "mock-result.json").read_text()
+        )
+
+        self.assertEqual(record["status"], "mock_interrupted")
+        self.assertFalse(record["backup_verified"])
+        self.assertFalse(record["transfer_started"])
+
+    def test_sigterm_has_distinct_terminal_code(self):
+        error = BackupProcessInterruptedError(signal.SIGTERM)
+
+        with patch(
+            "iphone_backup_cli.guarded_mock_execution.run_monitored_command",
+            side_effect=error,
+        ):
+            result = self.run_case("success")
+
+        self.assertEqual(result.status, "mock_interrupted")
+        self.assertEqual(result.exit_code, 143)
+
+    def test_cleanup_uncertainty_quarantines_root(self):
+        error = BackupProcessError(
+            "Process cleanup could not be confirmed.",
+            reason="timeout",
+            cleanup_failed=True,
+        )
+
+        with patch(
+            "iphone_backup_cli.guarded_mock_execution.run_monitored_command",
+            side_effect=error,
+        ):
+            result = self.run_case("timeout")
+
+        self.assertEqual(result.status, "mock_cleanup_unconfirmed")
+        self.assertEqual(result.exit_code, 9)
+
+        marker = self.root / QUARANTINE_NAME
+        self.assertTrue(marker.is_file())
+        self.assertIn(result.operation.name, marker.read_text())
+
+        record = json.loads(
+            (result.operation / "mock-result.json").read_text()
+        )
+
+        self.assertEqual(record["status"], "mock_cleanup_unconfirmed")
+        self.assertFalse(record["backup_verified"])
+
+        with self.assertRaises(BackupLockError):
+            self.run_case("success")
+
+        operations = list(
+            self.root.glob(".iphone-backup-operation-*")
+        )
+        self.assertEqual(len(operations), 1)
+
+    def test_failed_quarantine_never_claims_success(self):
+        error = BackupProcessError(
+            "Process group may still be active.",
+            cleanup_failed=True,
+        )
+
+        with patch(
+            "iphone_backup_cli.guarded_mock_execution.run_monitored_command",
+            side_effect=error,
+        ), patch(
+            "iphone_backup_cli.backup_lock.BackupLockGuard.quarantine",
+            side_effect=BackupLockError("Quarantine write failed."),
+        ):
+            with self.assertRaises(BackupLockError):
+                self.run_case("success")
+
+        operations = list(
+            self.root.glob(".iphone-backup-operation-*")
+        )
+
+        self.assertEqual(len(operations), 1)
+        self.assertTrue((operations[0] / "planning.json").exists())
+        self.assertFalse((operations[0] / "mock-result.json").exists())
+
+    def test_journal_write_failure_never_claims_success(self):
+        original_open = os.open
+
+        def fail_result_journal(path, *args, **kwargs):
+            if path == "mock-result.json":
+                raise OSError("Simulated result journal I/O failure.")
+            return original_open(path, *args, **kwargs)
+
+        with patch(
+            "iphone_backup_cli.guarded_mock_execution.os.open",
+            side_effect=fail_result_journal,
+        ):
+            with self.assertRaises(OSError):
+                self.run_case("success")
 
         operations = list(
             self.root.glob(".iphone-backup-operation-*")

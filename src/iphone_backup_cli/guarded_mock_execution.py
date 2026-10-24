@@ -5,6 +5,7 @@ No code path in this module invokes idevicebackup2.
 
 import json
 import os
+import signal
 import stat
 import sys
 from contextlib import contextmanager
@@ -160,14 +161,30 @@ def run_guarded_mock_execution(
                     timeout=0.25 if scenario == "timeout" else 10,
                     **launch_options,
                 )
-        except BackupProcessError as error:
-            if error.cleanup_failed:
-                raise
+        except BaseException as error:
+            if getattr(error, "cleanup_failed", False):
+                # Cleanup uncertainty takes priority over every other status.
+                # A persistent marker prevents future operations from starting
+                # until the surviving-process risk is inspected manually.
+                prepared.lock.quarantine(prepared.path.name)
+                status, exit_code = "mock_cleanup_unconfirmed", 9
 
-            if error.reason == "timeout":
-                status, exit_code = "mock_timed_out", 7
+            elif isinstance(error, KeyboardInterrupt):
+                status, exit_code = "mock_interrupted", 130
+
+            elif isinstance(error, BackupProcessError):
+                if error.reason == "timeout":
+                    status, exit_code = "mock_timed_out", 7
+                elif error.reason == "interrupted":
+                    status = "mock_interrupted"
+                    exit_code = (
+                        143 if error.signal_number == signal.SIGTERM else 130
+                    )
+                else:
+                    status, exit_code = "mock_failed", 6
+
             else:
-                status, exit_code = "mock_failed", 6
+                raise
         else:
             check_health()
 
