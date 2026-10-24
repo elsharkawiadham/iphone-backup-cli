@@ -7,9 +7,11 @@ import json
 import os
 import stat
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
+from .anchored_launch import prepare_anchored_launch
 from .backup_process import BackupProcessError, run_monitored_command
 from .backup_sandbox import prepare_sandboxed_command
 from .real_operation import create_guarded_real_operation
@@ -92,6 +94,24 @@ def _write_mock_result(prepared, status, exit_code):
         os.close(fd)
 
 
+
+@contextmanager
+def _launch_configuration(command, cwd, prepared, native_launcher):
+    """Keep the operation descriptor open during anchored execution."""
+
+    if native_launcher is None:
+        yield command, {"cwd": cwd}
+        return
+
+    with prepare_anchored_launch(
+        command,
+        prepared.path,
+        prepared.plan.operation_identity,
+        native_launcher,
+    ) as (anchored_command, inherited_fds):
+        yield anchored_command, {"pass_fds": inherited_fds}
+
+
 def run_guarded_mock_execution(
     backup_root,
     mount_point,
@@ -99,6 +119,7 @@ def run_guarded_mock_execution(
     device_id,
     *,
     scenario="success",
+    native_launcher=None,
 ):
     """Test the guarded launch lifecycle with a harmless Python writer."""
 
@@ -129,13 +150,16 @@ def run_guarded_mock_execution(
         check_health()
 
         try:
-            run_monitored_command(
-                command,
-                cwd=cwd,
-                health_check=check_health,
-                check_interval=0.05,
-                timeout=0.25 if scenario == "timeout" else 10,
-            )
+            with _launch_configuration(
+                command, cwd, prepared, native_launcher
+            ) as (launch_command, launch_options):
+                run_monitored_command(
+                    launch_command,
+                    health_check=check_health,
+                    check_interval=0.05,
+                    timeout=0.25 if scenario == "timeout" else 10,
+                    **launch_options,
+                )
         except BackupProcessError as error:
             if error.cleanup_failed:
                 raise
