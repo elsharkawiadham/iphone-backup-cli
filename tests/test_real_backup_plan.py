@@ -75,6 +75,23 @@ class TestRealBackupPlan(unittest.TestCase):
             ),
         )
 
+    def test_real_plan_uses_restricted_usb_socket(self):
+        plan = self.prepare()
+        profile = plan.command[4]
+
+        self.assertIn(
+            '(path-literal "/private/var/run/usbmuxd")',
+            profile,
+        )
+        self.assertIn(
+            '(remote unix-socket',
+            profile,
+        )
+        self.assertNotIn(
+            '(allow network-outbound)',
+            profile,
+        )
+
     def test_existing_device_target_rejected(self):
         (self.operation / self.device).mkdir()
 

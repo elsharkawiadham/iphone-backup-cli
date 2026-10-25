@@ -19,8 +19,23 @@ SANDBOX_PROFILE = """
 """
 
 
-def prepare_sandboxed_command(command, writable_directory):
+# Explicit USB-only capability. Keep ordinary simulations on the original
+# network-denying profile. The canonical socket path was verified on macOS.
+USBMUX_SANDBOX_PROFILE = SANDBOX_PROFILE + """
+(allow system-socket (socket-domain AF_UNIX))
+(allow network-outbound
+    (remote unix-socket
+        (path-literal "/private/var/run/usbmuxd")))
+"""
+
+
+def prepare_sandboxed_command(
+    command, writable_directory, *, allow_usbmux=False
+):
     """Return a sandbox command and its anchored working directory."""
+
+    if type(allow_usbmux) is not bool:
+        raise BackupSandboxError("USB socket permission must be boolean.")
 
     if (
         not isinstance(command, (list, tuple))
@@ -57,7 +72,7 @@ def prepare_sandboxed_command(command, writable_directory):
         "-D",
         f"WRITABLE_ROOT={resolved}",
         "-p",
-        SANDBOX_PROFILE,
+        USBMUX_SANDBOX_PROFILE if allow_usbmux else SANDBOX_PROFILE,
         *command,
     ]
 

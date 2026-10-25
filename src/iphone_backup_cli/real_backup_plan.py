@@ -83,6 +83,7 @@ def prepare_real_backup_plan(
     sandbox_command, cwd = prepare_sandboxed_command(
         original_command,
         operation,
+        allow_usbmux=True,
     )
 
     if cwd != operation.resolve(strict=True):
