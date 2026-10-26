@@ -9,12 +9,46 @@ from iphone_backup_cli.backup_process import (
     BackupProcessError,
     BackupProcessInterruptedError,
     _stop_process,
+    _minimal_child_environment,
     run_monitored_command,
 )
 from iphone_backup_cli.storage import StorageUnavailableError
 
 
 class TestBackupProcess(unittest.TestCase):
+
+    def test_child_environment_excludes_inherited_credentials(self):
+        fake_secrets = {
+            "BACKUP_PASSWORD": "synthetic-test-password",
+            "BACKUP_PASSWORD_NEW": "synthetic-new-password",
+            "AWS_SECRET_ACCESS_KEY": "synthetic-cloud-secret",
+            "PYTHONPATH": "/synthetic/untrusted/path",
+            "DYLD_INSERT_LIBRARIES": "/synthetic/library.dylib",
+        }
+
+        code = """
+import os
+
+blocked = (
+    "BACKUP_PASSWORD",
+    "BACKUP_PASSWORD_NEW",
+    "AWS_SECRET_ACCESS_KEY",
+    "PYTHONPATH",
+    "DYLD_INSERT_LIBRARIES",
+)
+
+assert all(name not in os.environ for name in blocked)
+assert os.environ.get("LANG") == "C"
+assert "PATH" in os.environ
+assert "HOME" in os.environ
+"""
+
+        with patch.dict(os.environ, fake_secrets):
+            result = run_monitored_command(
+                [sys.executable, "-I", "-c", code],
+            )
+
+        self.assertEqual(result, 0)
 
     def test_successful_process(self):
         self.assertEqual(run_monitored_command([sys.executable, "-c", "pass"]), 0)
@@ -82,6 +116,7 @@ class TestBackupProcess(unittest.TestCase):
             run_monitored_command(["simulation"], pass_fds=(3, 5))
         start.assert_called_once_with(
             ["simulation"], stdin=subprocess.DEVNULL,
+            env=_minimal_child_environment(),
             start_new_session=True, pass_fds=(3, 5),
         )
 

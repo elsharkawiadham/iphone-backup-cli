@@ -7,12 +7,22 @@ not proof that an unplugged volume or every descendant is safe.
 
 import math
 import os
+import pwd
 import signal
 import subprocess
 import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
+
+
+def _minimal_child_environment():
+    """Provide fixed launch settings without inheriting parent secrets."""
+    return {
+        "HOME": pwd.getpwuid(os.getuid()).pw_dir,
+        "LANG": "C",
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin",
+    }
 
 
 class BackupProcessError(Exception):
@@ -237,6 +247,7 @@ def run_monitored_command(
                 process = subprocess.Popen(
                     command,
                     stdin=subprocess.DEVNULL,
+                    env=_minimal_child_environment(),
                     start_new_session=(os.name == "posix"),
                     pass_fds=tuple(pass_fds),
                     **({'cwd': str(working_directory)}
