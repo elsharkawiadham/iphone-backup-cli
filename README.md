@@ -2,6 +2,22 @@
 
 An open-source macOS command-line project for backing up iPhones and iPads and archiving photos and videos.
 
+## Project documentation
+
+The authoritative documentation for this independent project
+is maintained in the `docs/` directory.
+
+| Document | Responsibility |
+| --- | --- |
+| [Product Brief](docs/PRODUCT_BRIEF.md) | Product vision, features and user journey |
+| [Roadmap](docs/ROADMAP.md) | Development milestones and priorities |
+| [Architecture](docs/ARCHITECTURE.md) | System components and technical boundaries |
+| [Decisions](docs/DECISIONS.md) | Approved decisions and open questions |
+| [Test Plan](docs/TEST_PLAN.md) | Testing and release acceptance |
+
+iPhone Backup CLI is independent from GAIN. Any future
+integration into GAIN requires an explicit founder decision.
+
 ## Project status
 
 Early development — version 0.1.0.
