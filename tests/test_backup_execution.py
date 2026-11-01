@@ -57,7 +57,7 @@ class TestBackupExecution(unittest.TestCase):
 
         for function in (
             "verify_storage",
-            "verify_backup_encryption",
+            "require_backup_encryption",
         ):
             patcher = patch(
                 f"iphone_backup_cli.execution_preflight.{function}"

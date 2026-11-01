@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from .backup_lock import acquire_backup_lock
 from .backup_target import check_new_backup_target
-from .encryption import verify_backup_encryption
+from .backup_encryption import require_backup_encryption
 from .storage import verify_storage
 from .storage_identity import capture_destination_identity, check_destination_identity
 
@@ -30,7 +30,7 @@ def prepare_backup_execution(
         verify_storage(destination, mount_point, volume_uuid)
         check_destination_identity(identity)
         lock.check()
-        verify_backup_encryption(device_id)
+        require_backup_encryption(device_id, destination)
         target = check_new_backup_target(destination, device_id)
         check_destination_identity(identity)
         lock.check()

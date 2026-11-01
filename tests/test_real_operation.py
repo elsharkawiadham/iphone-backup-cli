@@ -34,7 +34,7 @@ class TestRealOperation(unittest.TestCase):
 
         targets = (
             "iphone_backup_cli.execution_preflight.verify_storage",
-            "iphone_backup_cli.execution_preflight.verify_backup_encryption",
+            "iphone_backup_cli.execution_preflight.require_backup_encryption",
             "iphone_backup_cli.real_backup_plan.verify_storage",
             "iphone_backup_cli.real_operation.verify_storage",
         )
@@ -99,7 +99,7 @@ class TestRealOperation(unittest.TestCase):
 
     def test_encryption_failure_creates_no_operation(self):
         with patch(
-            "iphone_backup_cli.execution_preflight.verify_backup_encryption",
+            "iphone_backup_cli.execution_preflight.require_backup_encryption",
             side_effect=ValueError("Encryption unavailable"),
         ):
             with self.assertRaises(ValueError):

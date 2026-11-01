@@ -233,7 +233,7 @@ class ControlledExecutionTests(unittest.TestCase):
                 self.root.mkdir()
                 yield prepared
         with patch('iphone_backup_cli.execution_preflight.verify_storage'), patch(
-            'iphone_backup_cli.execution_preflight.verify_backup_encryption'
+            'iphone_backup_cli.execution_preflight.require_backup_encryption'
         ), patch('iphone_backup_cli.backup_execution.verify_storage'), patch(
             'iphone_backup_cli.backup_execution.prepare_backup_execution', side_effect=replaced
         ), patch('iphone_backup_cli.backup_execution.run_monitored_command') as runner:

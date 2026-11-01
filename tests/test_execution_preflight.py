@@ -51,7 +51,7 @@ class TestExecutionPreflight(unittest.TestCase):
             return_value=True,
         )
         encryption_patcher = patch(
-            "iphone_backup_cli.execution_preflight.verify_backup_encryption",
+            "iphone_backup_cli.execution_preflight.require_backup_encryption",
             return_value=True,
         )
 
@@ -70,7 +70,23 @@ class TestExecutionPreflight(unittest.TestCase):
             )
 
         self.assertEqual(self.verify_storage.call_count, 2)
-        self.verify_encryption.assert_called_once_with(self.device)
+        self.verify_encryption.assert_called_once_with(self.device, str(self.root))
+
+    def test_unknown_encryption_blocks_and_releases_lock(self):
+        from iphone_backup_cli.backup_encryption import BackupEncryptionError
+
+        self.verify_encryption.side_effect = BackupEncryptionError(
+            "Unknown encryption state"
+        )
+
+        with self.assertRaises(BackupEncryptionError):
+            with prepare_backup_execution(*self.args):
+                self.fail("Unsafe preflight accepted")
+
+        self.assertFalse((self.root / self.device).exists())
+
+        with acquire_backup_lock(self.root):
+            pass
 
     def test_disconnected_storage_rejected_before_lock(self):
         self.verify_storage.side_effect = StorageUnavailableError(

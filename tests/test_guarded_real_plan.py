@@ -42,7 +42,7 @@ class TestGuardedRealPlan(unittest.TestCase):
 
         targets = (
             "iphone_backup_cli.execution_preflight.verify_storage",
-            "iphone_backup_cli.execution_preflight.verify_backup_encryption",
+            "iphone_backup_cli.execution_preflight.require_backup_encryption",
             "iphone_backup_cli.real_backup_plan.verify_storage",
         )
 
