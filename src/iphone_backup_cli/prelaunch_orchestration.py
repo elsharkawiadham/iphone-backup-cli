@@ -6,6 +6,9 @@ This module never launches commands or authorizes real transfers.
 from dataclasses import dataclass
 from pathlib import Path
 
+from .backup_sandbox import USBMUX_SANDBOX_PROFILE
+from .real_backup_plan import IDEVICEBACKUP2
+
 from .prelaunch_safety import require_fresh_prelaunch_safety
 
 
@@ -48,6 +51,22 @@ def prepare_checked_launch_intent(
         or Path(backup_root) != path.parent
     ):
         raise ValueError("Invalid planned directories.")
+
+    expected_command = (
+        "/usr/bin/sandbox-exec",
+        "-D",
+        f"WRITABLE_ROOT={cwd}",
+        "-p",
+        USBMUX_SANDBOX_PROFILE,
+        str(IDEVICEBACKUP2),
+        "-u",
+        device_id,
+        "backup",
+        ".",
+    )
+
+    if command != expected_command:
+        raise ValueError("Unexpected planned backup command.")
 
     if require_fresh_prelaunch_safety(
         prepared, backup_root, mount_point, volume_uuid, device_id

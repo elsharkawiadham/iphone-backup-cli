@@ -3,6 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from iphone_backup_cli.backup_sandbox import USBMUX_SANDBOX_PROFILE
+from iphone_backup_cli.real_backup_plan import IDEVICEBACKUP2
+
 from iphone_backup_cli.prelaunch_orchestration import (
     prepare_checked_launch_intent,
 )
@@ -18,9 +21,13 @@ class TestPrelaunchOrchestration(unittest.TestCase):
         self.device = "a" * 40
         self.command = (
             "/usr/bin/sandbox-exec",
+            "-D",
+            f"WRITABLE_ROOT={self.operation}",
             "-p",
-            "mock-profile",
-            "/opt/homebrew/bin/idevicebackup2",
+            USBMUX_SANDBOX_PROFILE,
+            str(IDEVICEBACKUP2),
+            "-u",
+            self.device,
             "backup",
             ".",
         )
@@ -62,6 +69,38 @@ class TestPrelaunchOrchestration(unittest.TestCase):
         self.assertEqual(result.command, self.command)
         self.assertEqual(result.cwd, self.operation)
         self.gate.assert_called_once()
+
+    def test_modified_command_rejected(self):
+        changes = {
+            0: "/bin/sh",
+            2: "WRITABLE_ROOT=/tmp",
+            4: "(allow default)",
+            5: "/bin/echo",
+            7: "b" * 40,
+            8: "restore",
+            9: "/tmp",
+        }
+
+        for index, replacement in changes.items():
+            with self.subTest(index=index):
+                modified = list(self.command)
+                modified[index] = replacement
+                self.plan.command = tuple(modified)
+
+                with self.assertRaisesRegex(ValueError, "Unexpected"):
+                    self.check()
+
+                self.gate.assert_not_called()
+
+        self.plan.command = self.command
+
+    def test_unauthorized_backup_option_rejected(self):
+        self.plan.command = self.command[:-1] + ("--full", ".")
+
+        with self.assertRaisesRegex(ValueError, "Unexpected"):
+            self.check()
+
+        self.gate.assert_not_called()
 
     def test_security_exception_prevents_handoff(self):
         self.gate.side_effect = RuntimeError("Safety check failed")
