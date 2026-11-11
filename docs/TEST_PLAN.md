@@ -26,7 +26,7 @@ errors there. Use the default temporary directory.
 
 Latest founder-reported result:
 318 tests passed on 11 November 2026
-(default TMPDIR; see note below).
+(default TMPDIR; see note above).
 
 The latest actual test execution is always authoritative.
 
