@@ -20,8 +20,13 @@ Run from the repository root:
 
 PYTHONPATH=src python3 -m unittest discover -s tests -q
 
+Note: do not point TMPDIR at an ExFAT volume. ExFAT cannot hold
+Unix socket files, so test_unrelated_unix_socket_connection_denied
+errors there. Use the default temporary directory.
+
 Latest founder-reported result:
-256 tests passed on 26 October 2026.
+318 tests passed on 11 November 2026
+(default TMPDIR; see note below).
 
 The latest actual test execution is always authoritative.
 

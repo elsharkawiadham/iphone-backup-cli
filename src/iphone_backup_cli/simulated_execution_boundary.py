@@ -8,6 +8,7 @@ supervised worker is device-free. Not connected to the public CLI.
 import sys
 from dataclasses import dataclass
 
+from .backup_lock import BackupLockError
 from .backup_process import run_monitored_command
 from .backup_sandbox import prepare_sandboxed_command
 from .backup_target import check_new_backup_target
@@ -77,7 +78,13 @@ def run_checked_harmless_simulation(
         )
     except BaseException as error:
         if getattr(error, "cleanup_failed", False):
-            prepared.lock.quarantine(prepared.path.name)
+            try:
+                prepared.lock.quarantine(prepared.path.name)
+            except (BackupLockError, OSError) as quarantine_error:
+                error.add_note(
+                    "Quarantine could not be persisted: "
+                    + str(quarantine_error)
+                )
         raise
 
     if type(exit_code) is not int or exit_code != 0:

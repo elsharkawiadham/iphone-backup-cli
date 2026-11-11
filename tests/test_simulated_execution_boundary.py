@@ -190,5 +190,28 @@ class TestSimulatedExecutionBoundary(unittest.TestCase):
             self.assert_blocked(ValueError)
 
 
+    def _quarantine_failure(self, failure):
+        original = BackupProcessError(
+            "cleanup unconfirmed", reason="timeout", cleanup_failed=True
+        )
+        self.runner.side_effect = original
+        self.lock.quarantine.side_effect = failure
+        with self.assertRaises(BackupProcessError) as raised:
+            self.run_it()
+        self.assertIs(raised.exception, original)
+        self.assertTrue(raised.exception.cleanup_failed)
+        self.assertTrue(any(
+            "Quarantine could not be persisted" in note
+            for note in raised.exception.__notes__
+        ))
+        self.lock.quarantine.assert_called_once_with(self.operation.name)
+
+    def test_quarantine_lock_error_preserves_original_failure(self):
+        self._quarantine_failure(BackupLockError("Quarantine write failed."))
+
+    def test_quarantine_os_error_preserves_original_failure(self):
+        self._quarantine_failure(OSError("SSD I/O failure"))
+
+
 if __name__ == "__main__":
     unittest.main()
