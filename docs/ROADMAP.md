@@ -74,7 +74,7 @@ Pending:
 - Review live-transfer interruption and recovery safety.
 
 Checkpoint:
-256 automated tests passed in the latest reported run.
+318 automated tests passed on 11 November 2026 (default TMPDIR).
 The output of Step 176's integrated USB verification
 has not yet been provided.
 
