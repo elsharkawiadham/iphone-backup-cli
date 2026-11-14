@@ -85,6 +85,10 @@ def run_checked_harmless_simulation(
                     "Quarantine could not be persisted: "
                     + str(quarantine_error)
                 )
+            except KeyboardInterrupt:
+                error.add_note(
+                    "Quarantine was interrupted; persistence is unconfirmed."
+                )
         raise
 
     if type(exit_code) is not int or exit_code != 0:
