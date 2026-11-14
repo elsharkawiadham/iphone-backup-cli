@@ -212,6 +212,26 @@ class TestSimulatedExecutionBoundary(unittest.TestCase):
     def test_quarantine_os_error_preserves_original_failure(self):
         self._quarantine_failure(OSError("SSD I/O failure"))
 
+    def test_quarantine_interrupt_preserves_original_cleanup_failure(self):
+        for original in (
+            BackupProcessError("cleanup unconfirmed", reason="timeout", cleanup_failed=True),
+            KeyboardInterrupt(),
+        ):
+            with self.subTest(error_type=type(original)):
+                original.cleanup_failed = True
+                self.runner.side_effect = original
+                self.lock.quarantine.reset_mock()
+                self.lock.quarantine.side_effect = KeyboardInterrupt()
+                with self.assertRaises(type(original)) as raised:
+                    self.run_it()
+                self.assertIs(raised.exception, original)
+                self.assertTrue(raised.exception.cleanup_failed)
+                self.assertIn(
+                    "Quarantine was interrupted; persistence is unconfirmed.",
+                    raised.exception.__notes__,
+                )
+                self.lock.quarantine.assert_called_once_with(self.operation.name)
+
 
 if __name__ == "__main__":
     unittest.main()
