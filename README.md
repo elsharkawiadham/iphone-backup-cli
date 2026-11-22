@@ -20,9 +20,11 @@ integration into GAIN requires an explicit founder decision.
 
 ## Project status
 
-Early development — version 0.1.0.
+Pre-release — version 0.1.0.
 
 This software is experimental and is not ready to serve as someone's only device backup.
+Real iPhone backup execution remains disabled until hardware validation, protocol compatibility,
+password handling, interruption recovery, backup integrity and restore acceptance are complete.
 
 ## Current progress
 
@@ -48,7 +50,7 @@ This software is experimental and is not ready to serve as someone's only device
 ## Requirements
 
 - macOS 14 or newer (planned support)
-- Python 3.11–3.14 (compatibility testing pending)
+- Python 3.11–3.14
 - Homebrew and libimobiledevice for the backup engine
 - Swift compiler for the experimental native helper
 
