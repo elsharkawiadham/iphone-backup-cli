@@ -1,6 +1,6 @@
 # iPhone Backup CLI — Development Roadmap
 
-**Reviewed:** 26 October 2026
+**Reviewed:** 22 November 2026
 **Project status:** Experimental, pre-release
 **Version:** 0.1.0
 **Ownership:** Independent from GAIN
@@ -74,13 +74,17 @@ Pending:
 - Review live-transfer interruption and recovery safety.
 
 Checkpoint:
-318 automated tests passed on 11 November 2026 (default TMPDIR).
+319 automated tests passed on 22 November 2026 (default TMPDIR).
+GitHub Actions CI configuration is being introduced for reproducible macOS/Python verification.
 The output of Step 176's integrated USB verification
 has not yet been provided.
 
 ## M3 — First controlled encrypted backup
 
-Status: NOT STARTED THROUGH THE GUARDED REAL WORKFLOW
+Status: BLOCKED — HARDWARE AND APPROVAL GATE
+
+Issue #5 remains open. The software-side prototype is not enabled in the public CLI,
+no hardware transfer has been performed, and no result may be promoted to real-world success.
 
 Requirements before execution:
 - Complete M2 safety reviews.

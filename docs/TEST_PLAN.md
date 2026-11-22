@@ -1,6 +1,6 @@
 # iPhone Backup CLI — Test and Acceptance Plan
 
-**Reviewed:** 26 October 2026
+**Reviewed:** 22 November 2026
 **Status:** Active development test plan
 **Project:** Independent from GAIN
 
@@ -25,7 +25,7 @@ Unix socket files, so test_unrelated_unix_socket_connection_denied
 errors there. Use the default temporary directory.
 
 Latest founder-reported result:
-318 tests passed on 11 November 2026
+319 tests passed on 22 November 2026
 (default TMPDIR; see note above).
 
 The latest actual test execution is always authoritative.
